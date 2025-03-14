@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "target": "es2021",
+    "lib": ["es2021", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "esModuleInterop": true,
+    "declaration": true,
+    "outDir": "./lib",
+    "strict": true,
+    "baseUrl": "src",
+    "experimentalDecorators": true,
+    "isolatedModules": false,
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["./*"],
+      "@entrypoint": ["./index.ts"]
+    }
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["node_modules", "**/__test__"]
+}
