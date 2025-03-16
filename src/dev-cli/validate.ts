@@ -12,6 +12,7 @@ export type CommandLineArguments = {
   season: string;
   episode: string;
   url: string;
+  magnetUrl?: string;
 };
 
 export async function processOptions(sources: Array<Embed | Sourcerer>, options: CommandLineArguments) {

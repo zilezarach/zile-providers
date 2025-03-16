@@ -19,6 +19,7 @@ export type IndividualSourceRunnerOptions = {
   events?: IndividualScraperEvents;
   proxyStreams?: boolean; // temporary
   disableOpensubtitles?: boolean;
+  magnetUrl?: string;
 };
 
 export async function scrapeInvidualSource(
@@ -40,6 +41,7 @@ export async function scrapeInvidualSource(
         status: 'pending',
       });
     },
+    ...(ops.magnetUrl ? { magnetUrl: ops.magnetUrl } : {}),
   };
 
   let output: SourcererOutput | null = null;

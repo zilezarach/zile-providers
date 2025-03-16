@@ -1,17 +1,12 @@
-/* eslint import/no-extraneous-dependencies: ["error", {"devDependencies": true}] */
-
 import { existsSync } from 'fs';
 import { join } from 'path';
-
 import puppeteer, { Browser } from 'puppeteer';
 import Spinnies from 'spinnies';
 import { PreviewServer, build, preview } from 'vite';
-
 import { getConfig } from '@/dev-cli/config';
 import { logDeepObject } from '@/dev-cli/logging';
 import { getMovieMediaDetails, getShowMediaDetails } from '@/dev-cli/tmdb';
 import { CommandLineArguments } from '@/dev-cli/validate';
-
 import { MetaOutput, ProviderMakerOptions, makeProviders } from '..';
 
 async function runBrowserScraping(
@@ -19,9 +14,11 @@ async function runBrowserScraping(
   source: MetaOutput,
   options: CommandLineArguments,
   logger: any,
+  magnetUrl?: string, // Add magnetUrl parameter
 ) {
   if (!existsSync(join(__dirname, '../../lib/index.js')))
     throw new Error('Please compile before running cli in browser mode');
+
   const config = getConfig();
   if (!config.proxyUrl)
     throw new Error('Simple proxy url must be set in the environment (MOVIE_WEB_PROXY_URL) for browser mode to work');
@@ -29,6 +26,7 @@ async function runBrowserScraping(
   const root = join(__dirname, 'browser');
   let server: PreviewServer | undefined;
   let browser: Browser | undefined;
+
   try {
     // setup browser
     await build({
@@ -67,6 +65,8 @@ async function runBrowserScraping(
       input = {
         media,
         id: source.id,
+        // Add magnetUrl to the input if it exists and the source is webtor
+        ...(source.id === 'webtor' && magnetUrl ? { magnetUrl } : {}),
       };
     } else {
       throw new Error('Wrong source input type');
@@ -91,8 +91,10 @@ async function runActualScraping(
   source: MetaOutput,
   options: CommandLineArguments,
   logger: any,
+  magnetUrl?: string, // Add magnetUrl parameter
 ): Promise<any> {
-  if (options.fetcher === 'browser') return runBrowserScraping(providerOptions, source, options, logger);
+  if (options.fetcher === 'browser') return runBrowserScraping(providerOptions, source, options, logger, magnetUrl);
+
   const providers = makeProviders(providerOptions);
 
   if (source.type === 'embed') {
@@ -105,17 +107,20 @@ async function runActualScraping(
 
   if (source.type === 'source') {
     let media;
-
     if (options.type === 'movie') {
       media = await getMovieMediaDetails(options.tmdbId);
     } else {
       media = await getShowMediaDetails(options.tmdbId, options.season, options.episode);
     }
 
+    // Add magnetUrl to the context if it exists and the source is webtor
+    const extraContext = source.id === 'webtor' && magnetUrl ? { magnetUrl } : {};
+
     return providers.runSourceScraper({
       disableOpensubtitles: true,
       media,
       id: source.id,
+      ...extraContext,
     });
   }
 
@@ -126,13 +131,15 @@ export async function runScraper(
   providerOptions: ProviderMakerOptions,
   source: MetaOutput,
   options: CommandLineArguments,
-  logger: any, // Add logger parameter
+  logger: any,
 ) {
   const spinnies = new Spinnies();
+  const { magnetUrl } = options;
+
   spinnies.add('scrape', { text: `Running ${source.name} scraper` });
 
   try {
-    const result = await runActualScraping(providerOptions, source, options, logger);
+    const result = await runActualScraping(providerOptions, source, options, logger, magnetUrl);
     spinnies.succeed('scrape', { text: 'Done!' });
     logger.info(result); // Use the custom logger
   } catch (error) {

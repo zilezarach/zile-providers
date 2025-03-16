@@ -4,7 +4,7 @@ import { Caption, labelToLanguageCode } from '@/providers/captions';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
-const baseUrl = 'https://theyallsayflix.su/';
+const baseUrl = 'https://cineby.ru/';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const apiRes = await ctx.proxiedFetcher.full('/api/v1/search', {

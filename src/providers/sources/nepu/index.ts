@@ -6,6 +6,7 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
 import { SearchResults } from './types';
+import { tugaflixScraper } from '../tugaflix';
 
 const nepuBase = 'https://rar.to';
 const nepuReferer = 'https://rar.to/';

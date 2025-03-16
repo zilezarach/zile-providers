@@ -82,6 +82,7 @@
     "vitest": "^1.6.0"
   },
   "dependencies": {
+    "@webtor/platform-sdk-js": "^0.2.18",
     "cheerio": "1.0.0-rc.12",
     "cookie": "^0.6.0",
     "crypto-js": "^4.2.0",

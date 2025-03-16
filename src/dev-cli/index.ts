@@ -1,19 +1,15 @@
-/* eslint import/no-extraneous-dependencies: ["error", {"devDependencies": true}] */
-
 import { program } from 'commander';
 import dotenv from 'dotenv';
 import { prompt } from 'enquirer';
-
 import { runScraper } from '@/dev-cli/scraper';
 import { processOptions } from '@/dev-cli/validate';
-
 import { getBuiltinEmbeds, getBuiltinExternalSources, getBuiltinSources } from '..';
-
 dotenv.config();
 
 type ProviderSourceAnswers = {
   id: string;
   type: string;
+  magnetUrl?: string; // Added for webtor
 };
 
 type EmbedSourceAnswers = {
@@ -41,7 +37,6 @@ function joinMediaTypes(mediaTypes: string[] | undefined) {
         return `${type[0].toUpperCase() + type.substring(1).toLowerCase()}s`;
       })
       .join(' / ');
-
     return `(${formatted})`;
   }
   return ''; // * Embed sources pass through here too
@@ -56,6 +51,7 @@ async function runQuestions() {
     season: '0',
     episode: '0',
     url: '',
+    magnetUrl: '', // Added for webtor
   };
 
   const answers = await prompt<CommonAnswers>([
@@ -93,7 +89,6 @@ async function runQuestions() {
   options.sourceId = answers.source;
 
   const source = sources.find(({ id }) => id === answers.source);
-
   if (!source) {
     throw new Error(`No source with ID ${answers.source} found`);
   }
@@ -106,7 +101,6 @@ async function runQuestions() {
         message: 'Embed URL',
       },
     ]);
-
     options.url = sourceAnswers.url;
   } else {
     const sourceAnswers = await prompt<ProviderSourceAnswers>([
@@ -135,6 +129,18 @@ async function runQuestions() {
     options.tmdbId = sourceAnswers.id;
     options.type = sourceAnswers.type;
 
+    // Add magnet URL prompt if the source is webtor
+    if (source.id === 'webtor') {
+      const magnetAnswer = await prompt<{ magnetUrl: string }>([
+        {
+          type: 'input',
+          name: 'magnetUrl',
+          message: 'Magnet URL',
+        },
+      ]);
+      options.magnetUrl = magnetAnswer.magnetUrl;
+    }
+
     if (sourceAnswers.type === 'show') {
       const seriesAnswers = await prompt<ShowAnswers>([
         {
@@ -148,14 +154,16 @@ async function runQuestions() {
           message: 'Episode',
         },
       ]);
-
       options.season = seriesAnswers.season;
       options.episode = seriesAnswers.episode;
     }
   }
 
+  // Need to modify processOptions to pass magnetUrl along
   const { providerOptions, source: validatedSource, options: validatedOps } = await processOptions(sources, options);
-  await runScraper(providerOptions, validatedSource, validatedOps);
+
+  // Pass magnetUrl to runScraper
+  await runScraper(providerOptions, validatedSource, validatedOps, undefined, options.magnetUrl);
 }
 
 async function runCommandLine() {
@@ -166,16 +174,16 @@ async function runCommandLine() {
     .option('-t, --type <type>', "Media type. Either 'movie' or 'show'. Only used if source is a provider", 'movie')
     .option('-s, --season <number>', "Season number. Only used if type is 'show'", '0')
     .option('-e, --episode <number>', "Episode number. Only used if type is 'show'", '0')
-    .option('-u, --url <embed URL>', 'URL to a video embed. Only used if source is an embed', '');
+    .option('-u, --url <embed URL>', 'URL to a video embed. Only used if source is an embed', '')
+    .option('-m, --magnet-url <magnet URL>', 'Magnet URL for torrent. Only used if source is webtor', ''); // Added this option
 
   program.parse();
 
-  const {
-    providerOptions,
-    source: validatedSource,
-    options: validatedOps,
-  } = await processOptions(sources, program.opts());
-  await runScraper(providerOptions, validatedSource, validatedOps);
+  const options = program.opts();
+  const { providerOptions, source: validatedSource, options: validatedOps } = await processOptions(sources, options);
+
+  // Pass magnetUrl to runScraper
+  await runScraper(providerOptions, validatedSource, validatedOps, options.magnetUrl);
 }
 
 if (process.argv.length === 2) {

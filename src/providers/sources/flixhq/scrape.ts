@@ -17,7 +17,7 @@ export async function getFlixhqMovieSources(ctx: ScrapeContext, media: MovieMedi
   const episodeParts = id.split('-');
   const episodeId = episodeParts[episodeParts.length - 1];
 
-  const data = await ctx.proxiedFetcher<string>(`/ajax/movie/episodes/${episodeId}`, {
+  const data = await ctx.proxiedFetcher<string>(`/ajax/watch-movie/watch-${episodeId}`, {
     baseUrl: flixHqBase,
   });
 
@@ -42,7 +42,7 @@ export async function getFlixhqShowSources(ctx: ScrapeContext, media: ShowMedia,
   const episodeParts = id.split('-');
   const episodeId = episodeParts[episodeParts.length - 1];
 
-  const seasonsListData = await ctx.proxiedFetcher<string>(`/ajax/season/list/${episodeId}`, {
+  const seasonsListData = await ctx.proxiedFetcher<string>(`/ajax/watch-tv/list/${episodeId}`, {
     baseUrl: flixHqBase,
   });
 
@@ -53,7 +53,7 @@ export async function getFlixhqShowSources(ctx: ScrapeContext, media: ShowMedia,
 
   if (!season) throw new NotFoundError('season not found');
 
-  const seasonData = await ctx.proxiedFetcher<string>(`/ajax/season/episodes/${season}`, {
+  const seasonData = await ctx.proxiedFetcher<string>(`/ajax/watch-tv/episodes/${season}`, {
     baseUrl: flixHqBase,
   });
   const seasonDoc = load(seasonData);

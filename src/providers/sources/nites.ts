@@ -5,7 +5,7 @@ import { compareMedia } from '@/utils/compare';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { NotFoundError } from '@/utils/errors';
 
-const baseUrl = 'https://w1.nites.is';
+const baseUrl = 'https://gulaybutikonline.com';
 
 async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> {
   const searchPage = await ctx.proxiedFetcher('/wp-admin/admin-ajax.php', {

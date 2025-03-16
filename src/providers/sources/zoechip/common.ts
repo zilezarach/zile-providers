@@ -5,7 +5,7 @@ import { vidCloudScraper } from '@/providers/embeds/vidcloud';
 import { getZoeChipSourceURL, getZoeChipSources } from '@/providers/sources/zoechip/scrape';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 
-export const zoeBase = 'https://zoechip.cc';
+export const zoeBase = 'https://zoechip.org';
 
 export type ZoeChipSourceDetails = {
   type: string; // Only seen "iframe" so far
