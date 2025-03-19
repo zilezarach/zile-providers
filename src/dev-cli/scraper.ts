@@ -132,9 +132,9 @@ export async function runScraper(
   source: MetaOutput,
   options: CommandLineArguments,
   logger: any,
+  magnetUrl?: string,
 ) {
   const spinnies = new Spinnies();
-  const { magnetUrl } = options;
 
   spinnies.add('scrape', { text: `Running ${source.name} scraper` });
 

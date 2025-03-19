@@ -36,7 +36,7 @@
   "scripts": {
     "build": "node esbuild.config.js",
     "cli": "vite-node ./src/dev-cli/index.ts",
-    "test": "vitest run",
+    "test": "ts-node",
     "test:watch": "vitest",
     "test:providers": "cross-env MW_TEST_PROVIDERS=true vitest run --reporter verbose",
     "test:integration": "node ./tests/cjs && node ./tests/esm && node ./tests/browser",
@@ -93,6 +93,7 @@
     "nanoid": "^3.3.8",
     "node-fetch": "^3.3.2",
     "set-cookie-parser": "^2.7.1",
+    "ts-node": "^10.9.2",
     "unpacker": "^1.0.1"
   },
   "packageManager": "pnpm@9.14.4"

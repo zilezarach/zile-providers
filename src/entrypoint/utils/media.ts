@@ -3,6 +3,7 @@ export type CommonMedia = {
   releaseYear: number;
   imdbId?: string;
   tmdbId: string;
+  magnetUrl: string;
 };
 
 export type MediaTypes = 'show' | 'movie';

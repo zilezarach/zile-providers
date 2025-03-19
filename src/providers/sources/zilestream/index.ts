@@ -1,17 +1,8 @@
-import webtor from '@webtor/platform-sdk-js';
-import { SourcererOutput, makeSourcerer } from '@/providers/base';
+import { Stream } from '@/providers/streams';
 import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
+import { SourcererOutput, makeSourcerer } from '@/providers/base';
 import { flags } from '@/entrypoint/utils/targets';
-import { TorrentFile, ParsedTorrent } from '@webtor/platform-sdk-js';
-
-// Initialize the SDK with your configuration options
-// Ensure the API URL doesn't have trailing slashes
-const sdk = webtor({
-  apiUrl: (process.env.WEBTOR_API_URL || 'https://streamzile.0xzile.sbs').replace(/\/$/, ''),
-  apiKey: process.env.WEBTOR_API_KEY || '68db19f4-5f86-4fa3-ad94-9035673bbcaf',
-  // Add a timeout if needed
-  statsRetryInterval: 5000,
-});
+import { createWebtorClient, TorrentFile } from './webtorClient';
 
 // Add a timeout utility
 const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
@@ -21,62 +12,152 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
   return Promise.race([promise, timeout]);
 };
 
-async function webtorScraper(ctx: MovieScrapeContext | ShowScrapeContext): Promise<SourcererOutput> {
-  console.log('Starting Webtor scraper');
+// Get magnet URL from the context
+function getMagnetUrl(ctx: MovieScrapeContext | ShowScrapeContext): string | null {
+  // Debug log to see the structure of the context
+  console.log('Context structure:', JSON.stringify(ctx, null, 2));
+
+  // Check if the magnet URL is directly in the context (based on the logs)
+  if (ctx.magnetUrl) {
+    console.log('Found magnet URL directly in context');
+    return ctx.magnetUrl;
+  }
+
+  // Log what we're looking for to help with debugging
+  console.log('Looking for magnet URL in context');
+
+  // First, check if the context has a magnetUrl property directly
+  if ('magnetUrl' in ctx && ctx.magnetUrl) {
+    console.log('Found magnet URL in ctx.magnetUrl');
+    return ctx.magnetUrl;
+  }
+
+  // Next, check if it's in the media object
+  if (ctx.media && typeof ctx.media === 'object') {
+    if ('magnetUrl' in ctx.media && ctx.media.magnetUrl) {
+      console.log('Found magnet URL in ctx.media.magnetUrl');
+      return ctx.media.magnetUrl;
+    }
+
+    // For torrents, check if there's a torrents property
+    if ('torrents' in ctx.media && Array.isArray(ctx.media.torrents) && ctx.media.torrents.length > 0) {
+      const torrent = ctx.media.torrents[0];
+      if (torrent && 'magnetUrl' in torrent && torrent.magnetUrl) {
+        console.log('Found magnet URL in ctx.media.torrents[0].magnetUrl');
+        return torrent.magnetUrl;
+      }
+    }
+
+    // For episodes, check if there's an episode property with torrents
+    if ('episode' in ctx.media && ctx.media.episode && typeof ctx.media.episode === 'object') {
+      const episode = ctx.media.episode;
+
+      if ('magnetUrl' in episode && episode.magnetUrl) {
+        console.log('Found magnet URL in ctx.media.episode.magnetUrl');
+        return episode.magnetUrl;
+      }
+
+      if ('torrents' in episode && Array.isArray(episode.torrents) && episode.torrents.length > 0) {
+        const torrent = episode.torrents[0];
+        if (torrent && 'magnetUrl' in torrent && torrent.magnetUrl) {
+          console.log('Found magnet URL in ctx.media.episode.torrents[0].magnetUrl');
+          return torrent.magnetUrl;
+        }
+      }
+    }
+  }
+
+  console.log('No magnet URL found in context');
+  return null;
+}
+
+// Select the best file from the files list
+function selectAppropriateFile(files: TorrentFile[], mediaTitle: string): TorrentFile {
+  if (!files || files.length === 0) {
+    throw new Error('No files found in torrent');
+  }
+
+  // Log all files for debugging
+  console.log('Available files in torrent:');
+  files.forEach((file, index) => {
+    console.log(`${index + 1}. ${file.path} (${Math.round(file.length / 1024 / 1024)}MB)`);
+  });
+
+  // Filter out non-video files (based on common extensions)
+  const videoExtensions = ['.mp4', '.mkv', '.avi', '.mov', '.wmv', '.flv', '.webm', '.m4v'];
+  const videoFiles = files.filter((file) => {
+    const lowercasePath = file.path.toLowerCase();
+    return videoExtensions.some((ext) => lowercasePath.endsWith(ext));
+  });
+
+  if (videoFiles.length === 0) {
+    throw new Error('No video files found in torrent');
+  }
+
+  // Sort by size (descending) - usually the largest file is the main video
+  videoFiles.sort((a, b) => b.length - a.length);
+
+  // Return the largest video file
+  return videoFiles[0];
+}
+
+// The main scraper function for movies
+async function scrapeMovie(ctx: MovieScrapeContext): Promise<SourcererOutput> {
+  console.log('Starting Webtor movie scraper');
+
+  // Get the magnet URL first
+  const magnetUrl = getMagnetUrl(ctx);
+  if (!magnetUrl) {
+    console.log('No magnet URL found for movie');
+    return { embeds: [] };
+  }
+
+  console.log(`Found magnet URL: ${magnetUrl.substring(0, 50)}...`);
+
+  // Initialize the client
+  const client = createWebtorClient({
+    apiUrl: process.env.WEBTOR_API_URL || 'http://localhost:8096',
+    debug: true,
+  });
 
   try {
-    // Log if magnetUrl exists in context
-    if (ctx.magnetUrl) {
-      console.log(`MagnetUrl found in context: ${ctx.magnetUrl.substring(0, 50)}...`);
-    } else {
-      console.log('No magnetUrl in context');
-      throw new Error('No magnet URL provided');
-    }
+    console.log(`Processing magnet URL: ${magnetUrl.substring(0, 50)}...`);
 
-    // Fetch the torrent from the magnet URI with a timeout
-    console.log('Fetching torrent from magnet URL...');
-    const torrent = await withTimeout<ParsedTorrent>(
-      sdk.magnet.fetchTorrent(ctx.magnetUrl),
-      60000, // 60 second timeout
+    // Add the resource with a timeout
+    const resource = await withTimeout(
+      client.addResourceFromMagnet(magnetUrl),
+      120000, // 2 minute timeout
     );
 
-    console.log(`Torrent fetched successfully. InfoHash: ${torrent.infoHash}`);
-    console.log(`Torrent name: ${torrent.name}`);
-    console.log(`Number of files: ${torrent.files.length}`);
+    console.log(`Resource added successfully. ID: ${resource.id}`);
 
-    // Set expiration time for the torrent (in seconds)
-    const expire = 60 * 60 * 24; // 24 hours
-    console.log('Pushing torrent to webtor...');
-    await sdk.torrent.push(torrent, expire);
-    console.log('Torrent pushed successfully');
+    // List the content of the resource
+    const contentList = await withTimeout(
+      client.listResourceContent(resource.id),
+      60000, // 1 minute timeout
+    );
 
-    // Get a seeder instance for the torrent
-    const seeder = sdk.seeder.get(torrent.infoHash);
+    console.log(`Content listed. Number of files: ${contentList.files.length}`);
 
     // Select the appropriate file
-    console.log('Selecting appropriate file from torrent...');
-    const filePath = selectAppropriateFile(torrent.files, ctx.media);
-    console.log(`Selected file path: ${filePath}`);
+    const selectedFile = selectAppropriateFile(contentList.files, ctx.media.title);
+    console.log(`Selected file path: ${selectedFile.path}`);
 
-    // Get a streamable URL
-    console.log('Getting stream URL...');
-    const streamUrl = await withTimeout<string>(
-      seeder.streamUrl(filePath),
-      30000, // 30 second timeout
+    // Get a streamable URL with a timeout
+    const exportInfo = await withTimeout(
+      client.getExportUrl(resource.id, selectedFile.path),
+      60000, // 1 minute timeout
     );
-    console.log(`Stream URL obtained: ${streamUrl.substring(0, 50)}...`);
 
-    // Check if streamUrl exists
-    if (!streamUrl) {
-      throw new Error('Failed to get stream URL from webtor');
-    }
+    console.log(`Export URL obtained: ${exportInfo.url}`);
 
+    // Return the stream information
     return {
       stream: [
         {
-          id: `webtor-${torrent.infoHash}`,
+          id: `webtor-${resource.id}`,
           type: 'hls',
-          playlist: streamUrl,
+          playlist: exportInfo.url,
           captions: [],
           flags: [flags.CORS_ALLOWED],
           headers: {},
@@ -85,73 +166,93 @@ async function webtorScraper(ctx: MovieScrapeContext | ShowScrapeContext): Promi
       embeds: [],
     };
   } catch (error: any) {
-    // Use any type for error to handle various error structures
-    console.error('Error in Webtor provider:', error);
-    // Include more details in the error message for better debugging
+    console.error('Error in Webtor movie provider:', error);
     if (error.response) {
-      console.error('Error response:', error.response.status, error.response.data);
+      console.error('Error response:', error.response?.status, error.response?.data);
     }
-    throw new Error(`Failed to fetch stream via Webtor: ${error.message}`);
+    return { embeds: [] };
   }
 }
 
-// Helper function to select the best file in the torrent
-function selectAppropriateFile(files: TorrentFile[], media: any): string {
-  if (!files || files.length === 0) {
-    throw new Error('No files found in torrent');
+// The main scraper function for shows
+async function scrapeShow(ctx: ShowScrapeContext): Promise<SourcererOutput> {
+  console.log('Starting Webtor show scraper');
+
+  // Get the magnet URL first
+  const magnetUrl = getMagnetUrl(ctx);
+  if (!magnetUrl) {
+    console.log('No magnet URL found for show episode');
+    return { embeds: [] };
   }
 
-  // Log all files for debugging
-  console.log('Available files in torrent:');
-  files.forEach((file, index) => {
-    console.log(`${index}: ${file.path} (${formatBytes(file.length)})`);
+  console.log(`Found magnet URL: ${magnetUrl.substring(0, 50)}...`);
+
+  // Initialize the client
+  const client = createWebtorClient({
+    apiUrl: process.env.WEBTOR_API_URL || 'http://localhost:8080',
+    debug: true,
   });
 
-  // Filter for video files
-  const videoFiles = files.filter((file) => {
-    const ext = file.path.split('.').pop()?.toLowerCase() || '';
-    return ['mp4', 'mkv', 'avi', 'mov', 'webm', 'm4v'].includes(ext);
-  });
+  try {
+    console.log(`Processing magnet URL: ${magnetUrl.substring(0, 50)}...`);
 
-  if (videoFiles.length === 0) {
-    console.log('No video files found, using largest file instead');
-    // Fall back to using the largest file
-    files.sort((a, b) => b.length - a.length);
-    return files[0].path;
+    // Add the resource with a timeout
+    const resource = await withTimeout(
+      client.addResourceFromMagnet(magnetUrl),
+      120000, // 2 minute timeout
+    );
+
+    console.log(`Resource added successfully. ID: ${resource.id}`);
+
+    // List the content of the resource
+    const contentList = await withTimeout(
+      client.listResourceContent(resource.id),
+      60000, // 1 minute timeout
+    );
+
+    console.log(`Content listed. Number of files: ${contentList.files.length}`);
+
+    // Select the appropriate file
+    const selectedFile = selectAppropriateFile(contentList.files, ctx.media.title);
+    console.log(`Selected file path: ${selectedFile.path}`);
+
+    // Get a streamable URL with a timeout
+    const exportInfo = await withTimeout(
+      client.getExportUrl(resource.id, selectedFile.path),
+      60000, // 1 minute timeout
+    );
+
+    console.log(`Export URL obtained: ${exportInfo.url}`);
+
+    // Return the stream information
+    return {
+      stream: [
+        {
+          id: `webtor-${resource.id}`,
+          type: 'hls',
+          playlist: exportInfo.url,
+          captions: [],
+          flags: [flags.CORS_ALLOWED],
+          headers: {},
+        },
+      ],
+      embeds: [],
+    };
+  } catch (error: any) {
+    console.error('Error in Webtor show provider:', error);
+    if (error.response) {
+      console.error('Error response:', error.response?.status, error.response?.data);
+    }
+    return { embeds: [] };
   }
-
-  console.log(`Found ${videoFiles.length} video files`);
-
-  // Sort by size (largest first) - usually the highest quality
-  videoFiles.sort((a, b) => b.length - a.length);
-
-  // Log the selected file
-  console.log(`Selected video file: ${videoFiles[0].path} (${formatBytes(videoFiles[0].length)})`);
-
-  return videoFiles[0].path;
 }
 
-// Helper function to format bytes
-function formatBytes(bytes: number, decimals: number = 2): string {
-  if (bytes === 0) return '0 Bytes';
-
-  const k = 1024;
-  const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
-}
-
-// Create the provider using the makeSourcerer function
-export const zilescraper = makeSourcerer({
+// Create and export the Sourcerer
+export const webtorScraper = makeSourcerer({
   id: 'webtor',
-  name: 'Webtor Streaming',
+  name: 'Webtor',
   rank: 100,
-  disabled: false,
-  externalSource: false,
   flags: [flags.CORS_ALLOWED],
-  scrapeMovie: webtorScraper,
-  scrapeShow: webtorScraper,
+  scrapeMovie,
+  scrapeShow,
 });
