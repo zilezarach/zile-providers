@@ -66,7 +66,7 @@ async function runBrowserScraping(
         media,
         id: source.id,
         // Add magnetUrl to the input if it exists and the source is webtor
-        ...(source.id === 'webtor' && magnetUrl ? { magnetUrl } : {}),
+        ...(source.id === 'zilestream' && magnetUrl ? { magnetUrl } : {}),
       };
     } else {
       throw new Error('Wrong source input type');

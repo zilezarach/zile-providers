@@ -82,7 +82,7 @@ const universalScraper = async (ctx: ShowScrapeContext | MovieScrapeContext): Pr
 export const vidSrcToScraper = makeSourcerer({
   id: '111movies',
   name: '111Movies',
-  disabled: false,
+  disabled: true,
   scrapeMovie: universalScraper,
   scrapeShow: universalScraper,
   flags: [flags.PROXY_BLOCKED],

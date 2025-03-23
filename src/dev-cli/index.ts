@@ -130,7 +130,7 @@ async function runQuestions() {
     options.type = sourceAnswers.type;
 
     // Add magnet URL prompt if the source is webtor
-    if (source.id === 'webtor') {
+    if (source.id === 'zilestream') {
       const magnetAnswer = await prompt<{ magnetUrl: string }>([
         {
           type: 'input',
@@ -175,7 +175,7 @@ async function runCommandLine() {
     .option('-s, --season <number>', "Season number. Only used if type is 'show'", '0')
     .option('-e, --episode <number>', "Episode number. Only used if type is 'show'", '0')
     .option('-u, --url <embed URL>', 'URL to a video embed. Only used if source is an embed', '')
-    .option('-m, --magnet-url <magnet URL>', 'Magnet URL for torrent. Only used if source is webtor', ''); // Added this option
+    .option('-m, --magnet-url <magnet URL>', 'Magnet URL for torrent. Only used if source is zilestream', ''); // Added this option
 
   program.parse();
 
