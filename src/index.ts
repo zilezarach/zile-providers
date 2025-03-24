@@ -22,3 +22,6 @@ export { flags, targets } from '@/entrypoint/utils/targets';
 export { processOptions } from '@/dev-cli/validate';
 export type { CommandLineArguments } from '@/dev-cli/validate';
 export { runScraper } from '@/dev-cli/scraper';
+export { closeLoadScraper } from '@/providers/embeds/closeload';
+export { warezPlayerScraper } from '@/providers/embeds/warezcdn/warezplayer';
+export { mixdropScraper } from '@/providers/embeds/mixdrop';

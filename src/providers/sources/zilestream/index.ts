@@ -523,6 +523,7 @@ export const zileScraper = makeSourcerer({
   id: 'zilestream',
   name: 'ZileStream',
   rank: 250,
+  disabled: true,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie,
   scrapeShow,

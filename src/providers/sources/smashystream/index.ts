@@ -10,18 +10,18 @@ const universalScraper = async (ctx: ShowScrapeContext | MovieScrapeContext): Pr
   // thats the only way to find out if the embed has any streams
   const query =
     ctx.media.type === 'movie'
-      ? `?tmdb=${ctx.media.tmdbId}`
-      : `?tmdb=${ctx.media.tmdbId}&season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
+      ? `/${ctx.media.tmdbId}`
+      : `/${ctx.media.tmdbId}&season=${ctx.media.season.number}&episode=${ctx.media.episode.number}`;
 
   return {
     embeds: [
       {
         embedId: smashyStreamFScraper.id,
-        url: `https://embed.smashystream.com/videofeee.php${query}`,
+        url: `https://player.smashy.stream/movie${query}`,
       },
       {
         embedId: smashyStreamOScraper.id,
-        url: `https://embed.smashystream.com/shortmoviec.php${query}`,
+        url: `https://player.smashy.stream/movie${query}`,
       },
     ],
   };

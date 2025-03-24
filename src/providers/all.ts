@@ -37,6 +37,7 @@ import { vidsrcsuScraper } from '@/providers/sources/vidsrcsu';
 import { whvxScraper } from '@/providers/sources/whvx';
 import { zoechipScraper } from '@/providers/sources/zoechip';
 import { zileScraper } from '@/providers/sources/zilestream/index';
+import { moviesScraper } from './sources/111movies';
 import {
   autoembedBengaliScraper,
   autoembedEnglishScraper,
@@ -88,6 +89,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     zoechipScraper,
     vidsrcScraper,
     lookmovieScraper,
+    moviesScraper,
     nsbxScraper,
     smashyStreamScraper,
     ridooMoviesScraper,

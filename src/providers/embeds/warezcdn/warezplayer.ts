@@ -9,7 +9,7 @@ export const warezPlayerScraper = makeEmbed({
     const playerPageUrl = new URL(ctx.url);
 
     const hash = playerPageUrl.pathname.split('/')[2];
-    const playerApiRes = await ctx.proxiedFetcher('/player/index.php', {
+    const playerApiRes = await ctx.proxiedFetcher('/player', {
       baseUrl: playerPageUrl.origin,
       query: {
         data: hash,

@@ -7,15 +7,15 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { decryptSourceUrl } from './common';
 import { SourceResult, SourcesResult } from './types';
 
-const vidSrcToBase = 'https://111movies.com';
+const vidSrcToBase = 'https://vidsrc.com';
 const referer = `${vidSrcToBase}/`;
 
 const universalScraper = async (ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> => {
   const mediaId = ctx.media.imdbId ?? ctx.media.tmdbId;
   const url =
     ctx.media.type === 'movie'
-      ? `/movie/${mediaId}`
-      : `/tv/${mediaId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
+      ? `/embed/movie/${mediaId}`
+      : `/embed/tv/${mediaId}/${ctx.media.season.number}/${ctx.media.episode.number}`;
   const mainPage = await ctx.proxiedFetcher<string>(url, {
     baseUrl: vidSrcToBase,
     headers: {
@@ -25,7 +25,7 @@ const universalScraper = async (ctx: ShowScrapeContext | MovieScrapeContext): Pr
   const mainPage$ = load(mainPage);
   const dataId = mainPage$('a[data-id]').attr('data-id');
   if (!dataId) throw new Error('No data-id found');
-  const sources = await ctx.proxiedFetcher<SourcesResult>(`/ajax/episode/${dataId}/sources`, {
+  const sources = await ctx.proxiedFetcher<SourcesResult>(`/ajax/embed/episode/${dataId}/sources`, {
     baseUrl: vidSrcToBase,
     headers: {
       referer,
@@ -36,7 +36,7 @@ const universalScraper = async (ctx: ShowScrapeContext | MovieScrapeContext): Pr
   const embeds: SourcererEmbed[] = [];
   const embedArr = [];
   for (const source of sources.result) {
-    const sourceRes = await ctx.proxiedFetcher<SourceResult>(`/ajax/source/${source.id}`, {
+    const sourceRes = await ctx.proxiedFetcher<SourceResult>(`/ajax/embed/source/${source.id}`, {
       baseUrl: vidSrcToBase,
       headers: {
         referer,
@@ -80,8 +80,8 @@ const universalScraper = async (ctx: ShowScrapeContext | MovieScrapeContext): Pr
 };
 
 export const vidSrcToScraper = makeSourcerer({
-  id: '111movies',
-  name: '111Movies',
+  id: 'vidsrcto',
+  name: 'VidSrcTo',
   disabled: true,
   scrapeMovie: universalScraper,
   scrapeShow: universalScraper,
