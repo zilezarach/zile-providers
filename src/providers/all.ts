@@ -27,6 +27,7 @@ import { kissAsianScraper } from '@/providers/sources/kissasian/index';
 import { lookmovieScraper } from '@/providers/sources/lookmovie';
 import { mp4hydraScraper } from '@/providers/sources/mp4hydra';
 import { nsbxScraper } from '@/providers/sources/nsbx';
+import { embedSuScraper } from './sources/vidsrcnet';
 import { redStarScraper } from '@/providers/sources/redstar';
 import { remotestreamScraper } from '@/providers/sources/remotestream';
 import { showboxScraper } from '@/providers/sources/showbox/index';
@@ -94,6 +95,7 @@ export function gatherAllSources(): Array<Sourcerer> {
     smashyStreamScraper,
     ridooMoviesScraper,
     vidSrcToScraper,
+    embedSuScraper,
     nepuScraper,
     goojaraScraper,
     hdRezkaScraper,

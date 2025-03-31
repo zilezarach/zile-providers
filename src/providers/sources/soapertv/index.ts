@@ -108,18 +108,6 @@ const universalScraper = async (ctx: MovieScrapeContext | ShowScrapeContext): Pr
         flags: [flags.CORS_ALLOWED],
         captions,
       },
-      ...(streamResJson.val_bak
-        ? [
-            {
-              id: 'backup',
-              playlist: await convertPlaylistsToDataUrls(ctx.proxiedFetcher, `${baseUrl}/${streamResJson.val_bak}`),
-              type: 'hls',
-              flags: [flags.CORS_ALLOWED],
-              proxyDepth: 2,
-              captions,
-            } as Stream,
-          ]
-        : []),
     ],
   };
 };
