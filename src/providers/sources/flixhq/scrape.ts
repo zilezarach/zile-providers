@@ -17,7 +17,7 @@ export async function getFlixhqMovieSources(ctx: ScrapeContext, media: MovieMedi
   const episodeParts = id.split('-');
   const episodeId = episodeParts[episodeParts.length - 1];
 
-  const data = await ctx.proxiedFetcher<string>(`/ajax/watch-movie/watch-${episodeId}`, {
+  const data = await ctx.proxiedFetcher<string>(`/ajax/movie/watch-${episodeId}`, {
     baseUrl: flixHqBase,
   });
 

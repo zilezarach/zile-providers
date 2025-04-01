@@ -96,13 +96,15 @@ const universalScraper = async (ctx: MovieScrapeContext | ShowScrapeContext): Pr
       language,
     });
   }
-
+  const playlistUrl = new URL(streamResJson.val, baseUrl).href;
+  console.log('playlist url generated', playlistUrl);
+  const dataUrl = await convertPlaylistsToDataUrls(ctx.proxiedFetcher, playlistUrl);
   return {
     embeds: [],
     stream: [
       {
         id: 'primary',
-        playlist: await convertPlaylistsToDataUrls(ctx.proxiedFetcher, `${baseUrl}/${streamResJson.val}`),
+        playlist: dataUrl,
         type: 'hls',
         proxyDepth: 2,
         flags: [flags.CORS_ALLOWED],
@@ -115,7 +117,7 @@ const universalScraper = async (ctx: MovieScrapeContext | ShowScrapeContext): Pr
 export const soaperTvScraper = makeSourcerer({
   id: 'soapertv',
   name: 'SoaperTV',
-  rank: 160,
+  rank: 210,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: universalScraper,
   scrapeShow: universalScraper,

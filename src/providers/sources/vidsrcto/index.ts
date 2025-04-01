@@ -7,7 +7,7 @@ import { MovieScrapeContext, ShowScrapeContext } from '@/utils/context';
 import { decryptSourceUrl } from './common';
 import { SourceResult, SourcesResult } from './types';
 
-const vidSrcToBase = 'https://vidsrc.com';
+const vidSrcToBase = 'https://vidsrc.net';
 const referer = `${vidSrcToBase}/`;
 
 const universalScraper = async (ctx: ShowScrapeContext | MovieScrapeContext): Promise<SourcererOutput> => {

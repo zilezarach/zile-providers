@@ -92,6 +92,7 @@ export const ee3Scraper = makeSourcerer({
   id: 'ee3',
   name: 'EE3',
   rank: 150,
+  disabled: true,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
 });

@@ -22,14 +22,14 @@ function embed(provider: { id: string; name: string; rank: number; disabled?: bo
     disabled: provider.disabled,
     rank: provider.rank,
     async scrape(ctx) {
-      const [url, quality] = ctx.url.split('|');
+      const [url, quality] = ctx.url.split('|')[0];
       return {
         stream: [
           {
             id: 'primary',
             type: 'file',
             qualities: {
-              [getValidQualityFromString(quality || '')]: { url, type: 'mp4' },
+              unknown: { url, type: 'mp4' },
             },
             flags: [flags.CORS_ALLOWED],
             captions: [],

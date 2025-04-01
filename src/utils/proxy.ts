@@ -27,14 +27,14 @@ export function setupProxy(stream: Stream): Stream {
   if (stream.type === 'hls') {
     payload.type = 'hls';
     payload.url = stream.playlist;
-    stream.playlist = `https://proxy.nsbx.ru/proxy?${new URLSearchParams({ payload: Buffer.from(JSON.stringify(payload)).toString('base64url') })}`;
+    stream.playlist = `https://stream-zile-proxy.workers.dev?${new URLSearchParams({ payload: Buffer.from(JSON.stringify(payload)).toString('base64url') })}`;
   }
 
   if (stream.type === 'file') {
     payload.type = 'mp4';
     Object.entries(stream.qualities).forEach((entry) => {
       payload.url = entry[1].url;
-      entry[1].url = `https://proxy.nsbx.ru/proxy?${new URLSearchParams({ payload: Buffer.from(JSON.stringify(payload)).toString('base64url') })}`;
+      entry[1].url = `https://stream-zile-proxy.workers.dev?${new URLSearchParams({ payload: Buffer.from(JSON.stringify(payload)).toString('base64url') })}`;
     });
   }
 

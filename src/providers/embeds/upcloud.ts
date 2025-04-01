@@ -4,8 +4,8 @@ import { flags } from '@/entrypoint/utils/targets';
 import { makeEmbed } from '@/providers/base';
 import { Caption, getCaptionTypeFromUrl, labelToLanguageCode } from '@/providers/captions';
 
-const origin = 'https://rabbitstream.net';
-const referer = 'https://rabbitstream.net/';
+const origin = 'https://rabbitstream.net/v2/embed-4';
+const referer = 'https://rabbitstream.net/v2/embed-4';
 
 const { AES, enc } = crypto;
 
@@ -60,82 +60,105 @@ export const upcloudScraper = makeEmbed({
   id: 'upcloud',
   name: 'UpCloud',
   rank: 200,
-  disabled: true,
+  disabled: false,
   async scrape(ctx) {
-    // Example url: https://dokicloud.one/embed-4/{id}?z=
-    const parsedUrl = new URL(ctx.url.replace('embed-5', 'embed-4'));
+    try {
+      const parsedUrl = new URL(ctx.url.replace('embed-5', 'embed-4'));
+      const dataPath = parsedUrl.pathname.split('/');
+      const dataId = dataPath[dataPath.length - 1];
 
-    const dataPath = parsedUrl.pathname.split('/');
-    const dataId = dataPath[dataPath.length - 1];
-
-    const streamRes = await ctx.proxiedFetcher<StreamRes>(`${parsedUrl.origin}/ajax/embed-4/getSources?id=${dataId}`, {
-      headers: {
-        Referer: parsedUrl.origin,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-    });
-
-    let sources: { file: string; type: string } | null = null;
-
-    if (!isJSON(streamRes.sources)) {
-      const scriptJs = await ctx.proxiedFetcher<string>(`https://rabbitstream.net/js/player/prod/e4-player.min.js`, {
-        query: {
-          // browser side caching on this endpoint is quite extreme. Add version query paramter to circumvent any caching
-          v: Date.now().toString(),
-        },
-      });
-      const decryptionKey = extractKey(scriptJs);
-      if (!decryptionKey) throw new Error('Key extraction failed');
-
-      let extractedKey = '';
-      let strippedSources = streamRes.sources;
-      let totalledOffset = 0;
-      decryptionKey.forEach(([a, b]) => {
-        const start = a + totalledOffset;
-        const end = start + b;
-        extractedKey += streamRes.sources.slice(start, end);
-        strippedSources = strippedSources.replace(streamRes.sources.substring(start, end), '');
-        totalledOffset += b;
-      });
-
-      const decryptedStream = AES.decrypt(strippedSources, extractedKey).toString(enc.Utf8);
-      const parsedStream = JSON.parse(decryptedStream)[0];
-      if (!parsedStream) throw new Error('No stream found');
-      sources = parsedStream;
-    }
-
-    if (!sources) throw new Error('upcloud source not found');
-
-    const captions: Caption[] = [];
-    streamRes.tracks.forEach((track) => {
-      if (track.kind !== 'captions') return;
-      const type = getCaptionTypeFromUrl(track.file);
-      if (!type) return;
-      const language = labelToLanguageCode(track.label.split(' ')[0]);
-      if (!language) return;
-      captions.push({
-        id: track.file,
-        language,
-        hasCorsRestrictions: false,
-        type,
-        url: track.file,
-      });
-    });
-
-    return {
-      stream: [
+      const streamRes = await ctx.proxiedFetcher<StreamRes>(
+        `${parsedUrl.origin}/ajax/embed-4/getSources?id=${dataId}`,
         {
-          id: 'primary',
-          type: 'hls',
-          playlist: sources.file,
-          flags: [flags.CORS_ALLOWED],
-          captions,
-          preferredHeaders: {
-            Referer: referer,
-            Origin: origin,
+          headers: {
+            Referer: parsedUrl.origin,
+            'X-Requested-With': 'XMLHttpRequest',
           },
         },
-      ],
-    };
+      );
+
+      let sources: { file: string; type: string } | null = null;
+
+      if (!isJSON(streamRes.sources)) {
+        try {
+          const scriptJs = await ctx.proxiedFetcher<string>(
+            'https://rabbitstream.net/js/player/prod/e4-player.min.js',
+            {
+              query: {
+                v: Date.now().toString(),
+              },
+            },
+          );
+          const decryptionKey = extractKey(scriptJs);
+          if (!decryptionKey) throw new Error('Key extraction failed');
+
+          let extractedKey = '';
+          let strippedSources = streamRes.sources;
+          let totalledOffset = 0;
+          decryptionKey.forEach(([a, b]) => {
+            const start = a + totalledOffset;
+            const end = start + b;
+            extractedKey += streamRes.sources.slice(start, end);
+            strippedSources = strippedSources.replace(streamRes.sources.substring(start, end), '');
+            totalledOffset += b;
+          });
+
+          const decryptedStream = AES.decrypt(strippedSources, extractedKey).toString(enc.Utf8);
+          const parsedStream = JSON.parse(decryptedStream)[0];
+          if (!parsedStream) throw new Error('No stream found');
+          sources = parsedStream;
+        } catch (err) {
+          console.error('Failed to decrypt sources, falling back to raw sources:', err);
+          try {
+            const parsedStream = JSON.parse(streamRes.sources)[0];
+            if (parsedStream) sources = parsedStream;
+          } catch (parseErr) {
+            console.error('Failed to parse raw sources:', parseErr);
+            throw new Error('Unable to process sources, both decryption and parsing failed');
+          }
+        }
+      } else {
+        const parsedStream = JSON.parse(streamRes.sources)[0];
+        if (!parsedStream) throw new Error('No stream found');
+        sources = parsedStream;
+      }
+
+      if (!sources) throw new Error('upcloud source not found');
+
+      const captions: Caption[] = [];
+      streamRes.tracks.forEach((track) => {
+        if (track.kind !== 'captions') return;
+        const type = getCaptionTypeFromUrl(track.file);
+        if (!type) return;
+        const language = labelToLanguageCode(track.label.split(' ')[0]);
+        if (!language) return;
+        captions.push({
+          id: track.file,
+          language,
+          hasCorsRestrictions: false,
+          type,
+          url: track.file,
+        });
+      });
+
+      return {
+        stream: [
+          {
+            id: 'primary',
+            type: 'hls',
+            playlist: sources.file,
+            flags: [flags.CORS_ALLOWED],
+            captions,
+            preferredHeaders: {
+              Referer: referer,
+              Origin: origin,
+            },
+          },
+        ],
+      };
+    } catch (err) {
+      console.error('UpCloud scrape failed:', err);
+      throw err;
+    }
   },
 });
