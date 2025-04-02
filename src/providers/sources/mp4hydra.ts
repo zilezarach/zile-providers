@@ -56,9 +56,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   [
     data.servers[data.servers.auto],
     ...Object.values(data.servers).filter((x) => x !== data.servers[data.servers.auto] && x !== data.servers.auto),
-  ].forEach((server, _) =>
-    embeds.push({ embedId: `mp4hydra-${_ + 1}`, url: `${server}${data.playlist[0].src}|${data.playlist[0].label}` }),
-  );
+  ].forEach((server, _) => embeds.push({ embedId: `mp4hydra-${_ + 1}`, url: `${server}${data.playlist[0].src}` }));
 
   ctx.progress(90);
 
@@ -69,8 +67,8 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
 
 export const mp4hydraScraper = makeSourcerer({
   id: 'mp4hydra',
-  name: 'Mp4Hydra',
-  rank: 219,
+  name: 'omega',
+  rank: 350,
   flags: [flags.CORS_ALLOWED],
   scrapeMovie: comboScraper,
   scrapeShow: comboScraper,

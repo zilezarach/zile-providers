@@ -22,15 +22,14 @@ function embed(provider: { id: string; name: string; rank: number; disabled?: bo
     disabled: provider.disabled,
     rank: provider.rank,
     async scrape(ctx) {
-      const [url, quality] = ctx.url.split('|')[0];
+      const url = ctx.url.split('|')[0];
+      const proxiedUrl = `https://stream-zile-proxy.workers.dev/${encodeURIComponent(url)}`;
       return {
         stream: [
           {
             id: 'primary',
             type: 'file',
-            qualities: {
-              unknown: { url, type: 'mp4' },
-            },
+            url: proxiedUrl,
             flags: [flags.CORS_ALLOWED],
             captions: [],
           },
