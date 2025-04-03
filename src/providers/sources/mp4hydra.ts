@@ -56,7 +56,9 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   [
     data.servers[data.servers.auto],
     ...Object.values(data.servers).filter((x) => x !== data.servers[data.servers.auto] && x !== data.servers.auto),
-  ].forEach((server, _) => embeds.push({ embedId: `mp4hydra-${_ + 1}`, url: `${server}${data.playlist[0].src}` }));
+  ].forEach((server, index) =>
+    embeds.push({ embedId: `mp4hydra-${index + 1}`, url: `${server}${data.playlist[0].src}` }),
+  );
 
   ctx.progress(90);
 

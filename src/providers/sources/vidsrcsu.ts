@@ -15,6 +15,7 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
   if (!fixedServersMatch) {
     throw new NotFoundError('Could not find server list');
   }
+
   const fixedServersContent = fixedServersMatch[1];
 
   // Extract all server entries with their labels and URLs
@@ -85,7 +86,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
           if (proxyResponse.includes('#EXTM3U')) {
             // Make sure the URL doesn't have any malformed components
             streamUrl = cleanUrl(server.url);
-
             return {
               embeds: [],
               stream: [
@@ -96,7 +96,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
                   headers,
                   flags: [flags.CORS_ALLOWED],
                   captions: [],
-                  // Include these properties to match your frontend's expected format
                   quality: 'unknown',
                   source: 'vidsrc.su (FlixHQ)',
                 },
@@ -104,45 +103,48 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
             };
           }
 
-          // Extract the encoded part from the URL to get the original source
-          const urlParts = server.url.split('/');
-          const lastPart = urlParts[urlParts.length - 1];
-          const encodedPart = lastPart.split('.')[0]; // Remove .m3u8 if present
+          // Extract the encoded part from the URL
+          let originalUrl = null;
+          let originHeader = 'https://vidsrc.su';
+          let refererHeader = embedUrl;
 
-          // Try to decode the base64 data
-          const decodedData = Buffer.from(encodedPart, 'base64').toString('utf-8');
-          const jsonData = JSON.parse(decodedData);
+          try {
+            const urlParts = server.url.split('/');
+            const lastPart = urlParts[urlParts.length - 1];
+            const encodedPart = lastPart.split('.')[0]; // Remove .m3u8 if present
 
-          // Get the original source URL and headers
-          const originalUrl = jsonData.u;
-          headers = {
-            Referer: jsonData.r || jsonData.o || 'https://vidsrc.su',
-            Origin: jsonData.o || 'https://vidsrc.su',
-          };
+            // Try to decode the base64 data
+            const decodedData = Buffer.from(encodedPart, 'base64').toString('utf-8');
+            try {
+              const jsonData = JSON.parse(decodedData);
+              // Get the original source URL and headers
+              originalUrl = jsonData.u;
+              originHeader = jsonData.o || 'https://vidsrc.su';
+              refererHeader = jsonData.r || jsonData.o || 'https://vidsrc.su';
+            } catch (jsonError) {
+              console.error('Failed to parse JSON from decoded data:', jsonError);
+              // Continue with the proxy URL as fallback
+            }
+          } catch (decodeError) {
+            console.error('Failed to decode base64 data:', decodeError);
+            // Continue with the proxy URL as fallback
+          }
 
           if (originalUrl) {
+            // Set up headers for the original URL
+            headers = {
+              Referer: refererHeader,
+              Origin: originHeader,
+            };
+
             // Clean up the URL format
             streamUrl = cleanUrl(originalUrl);
-
-            return {
-              embeds: [],
-              stream: [
-                {
-                  id: 'primary',
-                  playlist: streamUrl,
-                  type: 'hls',
-                  headers,
-                  flags: [flags.CORS_ALLOWED],
-                  captions: [],
-                  // Include these properties to match your frontend's expected format
-                  quality: 'unknown',
-                  source: 'vidsrc.su (FlixHQ)',
-                },
-              ],
-            };
+          } else {
+            // Use the proxy URL as fallback
+            streamUrl = cleanUrl(server.url);
           }
         } catch (e) {
-          console.error('Failed to decode proxy data:', e);
+          console.error('Failed to process proxy data:', e);
           // Continue with the proxy URL as fallback
           streamUrl = cleanUrl(server.url);
         }
@@ -162,7 +164,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
             headers,
             flags: [flags.CORS_ALLOWED],
             captions: [],
-            // Include these properties to match your frontend's expected format
             quality: 'unknown',
             source: 'vidsrc.su (FlixHQ)',
           },
@@ -171,7 +172,6 @@ async function comboScraper(ctx: ShowScrapeContext | MovieScrapeContext): Promis
     } catch (error) {
       console.error(`Error with ${server.label}:`, error);
       // Continue to the next server on error
-      continue;
     }
   }
 
@@ -192,7 +192,6 @@ function cleanUrl(url: string): string {
 
     // Validate the URL format
     new URL(cleanedUrl);
-
     return cleanedUrl;
   } catch (e) {
     console.error('Invalid URL format:', url, e);
